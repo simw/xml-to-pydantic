@@ -1,0 +1,73 @@
+name: Publish Python Package
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - run: curl -sSL https://install.python-poetry.org | python - -y
+    - run: make lint
+    
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: curl -sSL https://install.python-poetry.org | python - -y
+    - run: poetry config virtualenvs.in-project true
+    - run: make test
+    - run: make test-dep-versions
+
+  build:
+    needs:
+    - test
+    - lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - run: curl -sSL https://install.python-poetry.org | python - -y
+    - name: check GITHUB_REF matches package version
+      uses: samuelcolvin/check-python-version@v3
+      with:
+        version_file_path: src/{{ cookiecutter.underscored }}/__init__.py
+    - run: make package
+    - uses: actions/upload-artifact@v4
+      with:
+        path: dist/*
+        name: package
+
+  pypi-publish:
+    needs:
+      - build
+    name: upload release to PyPI
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: dist
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
