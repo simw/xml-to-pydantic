@@ -21,6 +21,10 @@ To process and validate XML into pydantic models would then require
 two steps: convert the XML to a Python dictionary, then convert to
 the pydantic model. This libary provides a way to combine those steps.
 
+Note: if you are using this library to parse external, uncontrolled XML, you should
+be aware of possible attack vectors through XML: [https://github.com/tiran/defusedxml].
+This library uses lxml under the hood.
+
 ## Installation
 
 Use pip, or your favorite Python package manager (pipenv, poetry, pdm, ...):
