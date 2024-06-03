@@ -40,6 +40,7 @@ typing-extensions = "^4.0"
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.1"
 coverage = "^7.5.1"
+eval-type-backport = "^0.2.0"
 
 [tool.poetry.group.lint.dependencies]
 black = "^24.4.2"
