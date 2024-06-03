@@ -35,7 +35,7 @@ packages = [{include = "xml_to_pydantic", from = "src"}]
 python = "^3.8"
 pydantic = "^2.0"
 lxml = "^5.0"
-typing-extensions = "^4.0"
+typing-extensions = "^4.6.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.1"
