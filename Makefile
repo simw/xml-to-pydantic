@@ -10,7 +10,7 @@ prepare:
 .PHONY: lintable
 lintable: prepare
 	poetry run black $(sources)
-	poetry run ruff --fix $(sources)
+	poetry run ruff check --fix $(sources)
 
 
 .PHONY: lint
