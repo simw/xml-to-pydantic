@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 import pydantic
 import pytest
@@ -215,6 +215,27 @@ def test_parsing_single_element_to_list() -> None:
     assert model.element2 == [4.1]
 
 
+def test_optional_list() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>text1</element1>
+        <element1>text2</element1>
+        <element2>4.1</element2>
+        <element2>4.2</element2>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        element1: list[str] | None = XmlField(xpath="./element1/text()")
+        element2: Optional[List[float]] = XmlField(  # noqa: UP006, UP007
+            xpath="./element2/text()"
+        )
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == ["text1", "text2"]
+    assert model.element2 == [4.1, 4.2]
+
+
 def test_literal() -> None:
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -262,7 +283,6 @@ def test_empty_results() -> None:
     </root>
     """
 
-    # noqa: UP007
     class MyModel(XmlBaseModel):
         no_element: str | None = XmlField(xpath="./noelement/text()", default=None)
         element1: str | None = XmlField(xpath="./element1/text()", default=None)

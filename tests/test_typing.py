@@ -60,7 +60,7 @@ def test_list() -> None:
             issubclass(t, Iterable)
 
         assert get_origin(t) == list
-        assert issubclass(get_origin(t), Iterable)
+        assert issubclass(get_origin(t), Iterable)  # type: ignore
 
         assert get_args(t) == (str,)
 
@@ -149,3 +149,45 @@ def test_optional() -> None:
         issubclass(get_origin(Union[str, None]), Iterable)  # type: ignore
     assert get_args(Union[str, None]) == (str, type(None))
     assert get_args(Union[None, str]) == (type(None), str)
+
+
+def test_optional_list() -> None:
+    if sys.version_info >= (3, 9):
+        t = Optional[list[str]]
+
+        assert not isinstance(t, type)
+        with pytest.raises(TypeError):
+            issubclass(t, str)  # type: ignore
+
+        assert get_origin(t) == Union
+        assert not isinstance(get_origin(t), type)
+        with pytest.raises(TypeError):
+            issubclass(get_origin(t), str)  # type: ignore
+
+        assert get_args(t) == (list[str], type(None))
+        if sys.version_info < (3, 11):
+            assert isinstance(get_args(t)[0], type)
+        else:
+            assert not isinstance(get_args(t)[0], type)
+        assert get_origin(get_args(t)[0]) == list
+        assert isinstance(get_origin(get_args(t)[0]), type)
+        assert issubclass(get_origin(get_args(t)[0]), Iterable)
+
+
+def test_list_or_none() -> None:
+    if sys.version_info >= (3, 10):
+        t = Optional[list[str]]
+
+        assert not isinstance(t, type)
+        with pytest.raises(TypeError):
+            issubclass(t, str)
+
+        assert get_origin(t) == Union
+        assert not isinstance(get_origin(t), type)
+        with pytest.raises(TypeError):
+            issubclass(get_origin(t), str)
+
+        assert get_args(t) == (list[str], type(None))
+        assert get_origin(get_args(t)[0]) == list
+        assert isinstance(get_origin(get_args(t)[0]), type)
+        assert issubclass(get_origin(get_args(t)[0]), Iterable)

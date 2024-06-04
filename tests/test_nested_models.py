@@ -118,3 +118,30 @@ def test_list_of_nested_models() -> None:
     assert model.element1 == "value1"
     assert model.element2[0].element2a == "text1"
     assert model.element2[1].element2a == "text2"
+
+
+def test_optional_list_of_nested_models() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>value1</element1>
+        <element2>
+            <element2a>text1</element2a>
+        </element2>
+        <element2>
+            <element2a>text2</element2a>
+        </element2>
+    </root>
+    """
+
+    class Model2(XmlBaseModel):
+        element2a: str = XmlField(xpath="./element2a/text()")
+
+    class MyModel(XmlBaseModel):
+        element1: str = XmlField(xpath="./element1/text()")
+        element2: list[Model2] | None = XmlField(xpath="./element2")
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == "value1"
+    assert model.element2 is not None
+    assert model.element2[0].element2a == "text1"
+    assert model.element2[1].element2a == "text2"

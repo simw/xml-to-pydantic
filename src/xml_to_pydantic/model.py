@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+import types
+from typing import Any, Iterable, Union
 
 from lxml import etree
 from pydantic import BaseModel
@@ -37,11 +38,22 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
     try:
         for field_name, xpath in field_xpaths.items():
             result = root.xpath(xpath, smart_strings=False)
-            field_info = field_infos[field_name]
+            annotation = field_infos[field_name].annotation
             # eg1 if the annotation is list[str], get <class list>
             # eg2 if the annotation is str, get <class str>
-            field_type = get_origin(field_info.annotation) or field_info.annotation
-            field_args = get_args(field_info.annotation)
+            # eg3 if the annotation is list[str] | None, get field_type = Union
+            field_type = get_origin(annotation) or annotation
+            field_args = get_args(annotation)
+
+            # Remove any optionality from the field type
+            # Note: different versions of python have different ways of detecting
+            # whether it's a Union / optional type
+            if field_type is Union or (
+                hasattr(types, "UnionType") and field_type is types.UnionType
+            ):
+                annotation = list(set(field_args) - {type(None)})[0]
+                field_type = get_origin(annotation) or annotation
+                field_args = get_args(annotation)
 
             if field_type is None:
                 # Note pydantic will error on model creation before we even get here
@@ -50,14 +62,13 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
                     f"Field {field_name} has no type annotation"
                 )  # pragma: no cover
 
-            if isinstance(field_type, type) and issubclass(field_type, XmlBaseModel):
+            # In python 3.9 -> 3.11, isinstance(list[str], type) is True, but
+            # issubclass(list[str], XmlBaseModel) gives an exception.
+            # Hence, duck typing may be a better solution here.
+            if hasattr(field_type, "xml_fields"):
                 result = [extract_data(elem, field_type) for elem in result]
 
-            elif (
-                len(field_args) > 0
-                and isinstance(field_args[0], type)
-                and issubclass(field_args[0], XmlBaseModel)
-            ):
+            elif len(field_args) > 0 and hasattr(field_args[0], "xml_fields"):
                 result = [extract_data(elem, field_args[0]) for elem in result]
 
             # lxml always returns a list. If we want a single value,
