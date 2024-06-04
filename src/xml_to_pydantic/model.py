@@ -68,6 +68,9 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
                 and issubclass(field_type, Iterable)
             )
 
+            if len(result) == 0:
+                continue
+
             if len(result) == 1 and not result_as_list:
                 result = result[0]
 
@@ -97,5 +100,4 @@ class XmlBaseModel(BaseModel):
     def model_validate_xml(cls, xml_bytes_or_str: str | bytes) -> Self:
         root = etree.XML(xml_bytes_or_str)
         extracted_data = extract_data(root, cls)
-        print(extracted_data)
         return cls(**extracted_data)
