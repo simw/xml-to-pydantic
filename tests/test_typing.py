@@ -60,7 +60,7 @@ def test_list() -> None:
             issubclass(t, Iterable)
 
         assert get_origin(t) == list
-        assert issubclass(get_origin(t), Iterable)  # type: ignore
+        assert issubclass(get_origin(t), Iterable)
 
         assert get_args(t) == (str,)
 
@@ -180,12 +180,12 @@ def test_list_or_none() -> None:
 
         assert not isinstance(t, type)
         with pytest.raises(TypeError):
-            issubclass(t, str)
+            issubclass(t, str)  # type: ignore
 
         assert get_origin(t) == Union
         assert not isinstance(get_origin(t), type)
         with pytest.raises(TypeError):
-            issubclass(get_origin(t), str)
+            issubclass(get_origin(t), str)  # type: ignore
 
         assert get_args(t) == (list[str], type(None))
         assert get_origin(get_args(t)[0]) == list
