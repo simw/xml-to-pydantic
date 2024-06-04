@@ -17,9 +17,9 @@ the creation of easy or complex data validation rules for processing
 external data. That data usually comes in JSON format or from a Python
 dictionary.
 
-To process and validate XML into pydantic models would then require
+But to process and validate XML into pydantic models would then require
 two steps: convert the XML to a Python dictionary, then convert to
-the pydantic model. This libary provides a way to combine those steps.
+the pydantic model. This libary provides a convenient way to combine those steps.
 
 Note: if you are using this library to parse external, uncontrolled XML, you should
 be aware of possible attack vectors through XML: [https://github.com/tiran/defusedxml].
@@ -35,12 +35,59 @@ pip install xml-to-pydantic
 
 ## Usage
 
-An example
+The XML is extracted using XPath defined on the fields:
 
 ```py
-import xml_to_pydantic
+from xml_to_pydantic import XmlBaseModel, XmlField
 
-print("An example!")
+
+xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <element>4.53</element>
+    <a href="https://example.com">Link</a>
+</root>
+"""
+
+
+class MyModel(XmlBaseModel):
+    number: float = XmlField(xpath="./element/text()")
+    href: str = XmlField(xpath="./a/@href")
+
+
+model = MyModel.model_validate_xml(xml_bytes)
+print(model)
+# > number=4.53 href='https://example.com'
+```
+
+The parsing can also deal with nested models and lists:
+
+```py
+from xml_to_pydantic import XmlBaseModel, XmlField
+
+
+xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <level1>
+        <level2>value1</level2>
+        <level2>value2</level2>
+        <level2>value3</level2>
+    </level1>
+    <level11>value11</level11>
+</root>
+"""
+
+class NextLevel(XmlBaseModel):
+    level2: list[str] = XmlField(xpath="./level2/text()")
+
+
+class MyModel(XmlBaseModel):
+    next_level: NextLevel = XmlField(xpath="./level1")
+    level_11: list[str] = XmlField(xpath="./level11/text()")
+
+
+model = MyModel.model_validate_xml(xml_bytes)
+print(model)
+# > next_level=NextLevel(level2=['value1', 'value2', 'value3']) level_11=['value11']
 ```
 
 ## Development

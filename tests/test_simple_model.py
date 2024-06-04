@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 import pydantic
 import pytest
@@ -215,6 +215,27 @@ def test_parsing_single_element_to_list() -> None:
     assert model.element2 == [4.1]
 
 
+def test_optional_list() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>text1</element1>
+        <element1>text2</element1>
+        <element2>4.1</element2>
+        <element2>4.2</element2>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        element1: list[str] | None = XmlField(xpath="./element1/text()")
+        element2: Optional[List[float]] = XmlField(  # noqa: UP006, UP007
+            xpath="./element2/text()"
+        )
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == ["text1", "text2"]
+    assert model.element2 == [4.1, 4.2]
+
+
 def test_literal() -> None:
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -244,3 +265,55 @@ def test_list_of_literals() -> None:
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == ["value1", "value2"]
+
+
+def test_empty_results() -> None:
+    """
+    If either a) the xpath element doesn't exist, or b) the xpath returns
+    an empty list, then the field will drop out and will need a default
+    value to be set.
+
+    (Note: when using /text(), lxml xpath doesn't differentiate between an
+    xpath element not existing and an xpath element existing but being empty)
+    """
+
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1 />
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        no_element: str | None = XmlField(xpath="./noelement/text()", default=None)
+        element1: str | None = XmlField(xpath="./element1/text()", default=None)
+        element2: float | None = XmlField(xpath="./element1/text()", default=None)
+        element3: int | None = XmlField(xpath="./element1/text()", default=None)
+        element4: list[str] = XmlField(xpath="./element1/text()", default_factory=list)
+        element5: list[str] | None = XmlField(xpath="./element1/text()", default=None)
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.no_element is None
+    assert model.element1 is None
+    assert model.element2 is None
+    assert model.element3 is None
+    assert model.element4 == []
+    assert model.element5 is None
+
+
+def test_empty_results_with_defaults() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        str_field: str = XmlField(xpath="/el/text()", default="default")
+        opt_str_field: str | None = XmlField(xpath="/el/text()", default="default")
+        list_field: list[str] = XmlField(
+            xpath="/el/text()", default_factory=lambda: ["default"]
+        )
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.str_field == "default"
+    assert model.opt_str_field == "default"
+    assert model.list_field == ["default"]
