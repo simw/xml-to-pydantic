@@ -47,7 +47,7 @@ jobs:
     - name: check GITHUB_REF matches package version
       uses: samuelcolvin/check-python-version@v3
       with:
-        version_file_path: src/{{ cookiecutter.underscored }}/__init__.py
+        version_file_path: src/xml_to_pydantic/__init__.py
     - run: make package
     - uses: actions/upload-artifact@v4
       with:
