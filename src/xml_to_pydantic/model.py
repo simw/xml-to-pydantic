@@ -50,17 +50,23 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
                     f"Field {field_name} has no type annotation"
                 )  # pragma: no cover
 
-            if issubclass(field_type, BaseModel):
+            if isinstance(field_type, type) and issubclass(field_type, XmlBaseModel):
                 result = [extract_data(elem, field_type) for elem in result]
 
-            elif len(field_args) > 0 and issubclass(field_args[0], BaseModel):
+            elif (
+                len(field_args) > 0
+                and isinstance(field_args[0], type)
+                and issubclass(field_args[0], XmlBaseModel)
+            ):
                 result = [extract_data(elem, field_args[0]) for elem in result]
 
             # lxml always returns a list. If we want a single value,
             # we need to extract it
             result_as_list = (
-                not issubclass(field_type, (str, bytes, BaseModel))
-            ) and issubclass(field_type, Iterable)
+                isinstance(field_type, type)
+                and (not issubclass(field_type, (str, bytes, BaseModel)))
+                and issubclass(field_type, Iterable)
+            )
 
             if len(result) == 1 and not result_as_list:
                 result = result[0]
@@ -91,4 +97,5 @@ class XmlBaseModel(BaseModel):
     def model_validate_xml(cls, xml_bytes_or_str: str | bytes) -> Self:
         root = etree.XML(xml_bytes_or_str)
         extracted_data = extract_data(root, cls)
+        print(extracted_data)
         return cls(**extracted_data)

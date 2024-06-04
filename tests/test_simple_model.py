@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List, Literal
+
 import pydantic
 import pytest
 
@@ -39,10 +41,11 @@ def test_xml_parses_single_level_model() -> None:
 
 def test_xml_parses_direct_xml_fields() -> None:
     """Testing single level model, but with xpath
-    defined in the xml_fields function.
+    defined in the xml_fields function, instead of on
+    the model using XmlField.
 
-    This might be prefered for separation of concerns or
-    code readability."""
+    While more verbose, this might be prefered for separation
+    of concerns or code readability for complex models."""
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
         <element1>text1</element1>
@@ -173,6 +176,10 @@ def test_non_xml_field_but_required() -> None:
 
 
 def test_parsing_multiple_elements_to_list() -> None:
+    """
+    Note: this tests both list and typing.List, which may
+    not behave in the exact same way internally.
+    """
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
         <element1>text1</element1>
@@ -184,7 +191,7 @@ def test_parsing_multiple_elements_to_list() -> None:
 
     class MyModel(XmlBaseModel):
         element1: list[str] = XmlField(xpath="./element1/text()")
-        element2: list[float] = XmlField(xpath="./element2/text()")
+        element2: List[float] = XmlField(xpath="./element2/text()")  # noqa: UP006
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == ["text1", "text2"]
@@ -206,3 +213,34 @@ def test_parsing_single_element_to_list() -> None:
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == ["text1"]
     assert model.element2 == [4.1]
+
+
+def test_literal() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>value1</element1>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        element1: Literal["value1", "value2"] = XmlField(xpath="./element1/text()")
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == "value1"
+
+
+def test_list_of_literals() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>value1</element1>
+        <element1>value2</element1>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        element1: list[Literal["value1", "value2"]] = XmlField(
+            xpath="./element1/text()"
+        )
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == ["value1", "value2"]
