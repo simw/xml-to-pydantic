@@ -5,7 +5,7 @@ from typing import List, Literal, Optional
 import pydantic
 import pytest
 
-from xml_to_pydantic import XmlBaseModel, XmlField, XmlModelError, XmlParsingError
+from xml_to_pydantic import XmlBaseModel, XmlField, XmlParsingError
 
 
 def test_xml_parses_single_level_model() -> None:
