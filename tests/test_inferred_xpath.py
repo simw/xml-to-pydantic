@@ -109,11 +109,10 @@ def test_inferring_xpath_with_alias() -> None:
     </root>
     """
 
-    class DashToUnderscore(XmlBaseModel):
-        @staticmethod
-        def xpath_generator(field_name: str) -> str:
-            return field_name.replace("_", "-")
+    def xpath_generator(field_name: str) -> str:
+        return field_name.replace("_", "-")
 
+    class DashToUnderscore(XmlBaseModel):
         model_config = ConfigDict(xpath_generator=xpath_generator)
 
     class Element2Model(DashToUnderscore):
