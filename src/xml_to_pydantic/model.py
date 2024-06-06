@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import types
-from typing import Any, Iterable, Union
+from typing import Any, Callable, Iterable, Union, cast
 
 from lxml import etree
 from pydantic import BaseModel
+from pydantic import ConfigDict as BaseConfigDict
 from pydantic.fields import FieldInfo
 from typing_extensions import Self, get_args, get_origin
 
@@ -15,6 +16,10 @@ class XmlModelError(Exception):
 
 class XmlParsingError(Exception):
     """Error when parsing XML using lxml"""
+
+
+class ConfigDict(BaseConfigDict):
+    xpath_generator: Callable[[str], str]
 
 
 # Similar to pydantic's Field, this is needed to be
@@ -100,10 +105,41 @@ class XmlBaseModel(BaseModel):
     def xml_fields(cls) -> dict[str, str]:
         fields = {}
         for field, info in cls.model_fields.items():
-            if not isinstance(info, XmlFieldInfo) and info.is_required():
-                raise XmlModelError(f"Field {field} is required but not an XmlField")
-            if isinstance(info, XmlFieldInfo):
+            if isinstance(info, XmlFieldInfo) and info.xpath is not None:
                 fields[field] = info.xpath
+                continue
+
+            # Need to check whether it's an XmlBaseModel
+            # (or a list, or an optional ...)
+            # If not, then should have /text() on the end, otherwise,
+            # it's a nested model
+            annotation = info.annotation
+            field_type = get_origin(annotation) or annotation
+            field_args = get_args(annotation)
+
+            if field_type is Union or (
+                hasattr(types, "UnionType") and field_type is types.UnionType
+            ):
+                annotation = list(set(field_args) - {type(None)})[0]
+                field_type = get_origin(annotation) or annotation
+                field_args = get_args(annotation)
+
+            # TODO: add alias generator / support
+            xpath = f"./{field}"
+            xpath_gen = cast(
+                Callable[[str], str], cls.model_config.get("xpath_generator")
+            )
+            if xpath_gen is not None:
+                xpath = f"./{xpath_gen(field)}"
+
+            if (
+                hasattr(annotation, "xml_fields")
+                or len(field_args) > 0
+                and hasattr(field_args[0], "xml_fields")
+            ):
+                fields[field] = xpath
+            else:
+                fields[field] = xpath + "/text()"
 
         return fields
 
