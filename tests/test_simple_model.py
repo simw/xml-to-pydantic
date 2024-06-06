@@ -5,7 +5,7 @@ from typing import List, Literal, Optional
 import pydantic
 import pytest
 
-from xml_to_pydantic import XmlBaseModel, XmlField, XmlModelError, XmlParsingError
+from xml_to_pydantic import XmlBaseModel, XmlField, XmlParsingError
 
 
 def test_xml_parses_single_level_model() -> None:
@@ -155,24 +155,6 @@ def test_non_xml_field_not_required() -> None:
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "text1"
-
-
-def test_non_xml_field_but_required() -> None:
-    """If a field is required (ie doesn't have a default
-    value), then it must have an xpath defined."""
-
-    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
-    <root>
-        <element1>text1</element1>
-    </root>
-    """
-
-    class MyModel(XmlBaseModel):
-        element1: str = XmlField(xpath="./element1/text()")
-        element2: str
-
-    with pytest.raises(XmlModelError):
-        MyModel.model_validate_xml(xml_bytes)
 
 
 def test_parsing_multiple_elements_to_list() -> None:

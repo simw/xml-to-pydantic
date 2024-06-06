@@ -35,7 +35,33 @@ pip install xml-to-pydantic
 
 ## Usage
 
-The XML is extracted using XPath defined on the fields:
+The XML is extracted using XPath. For simple XML, the XPath can be calcualted
+from the model:
+
+```py
+from xml_to_pydantic import XmlBaseModel
+
+
+xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <element>4.53</element>
+    <element>3.25</element>
+</root>
+"""
+
+
+class MyModel(XmlBaseModel):
+    element: list[float]
+
+
+model = MyModel.model_validate_xml(xml_bytes)
+print(model)
+# > element=[4.53, 3.25]
+```
+
+However, for more complicated XML, this one-to-one correspondance may not be
+convenient, and a better approach is supplying the xpath directly (similar
+to how pydantic allows specifying an alias for a field):
 
 ```py
 from xml_to_pydantic import XmlBaseModel, XmlField
