@@ -137,7 +137,19 @@ class XmlBaseModel(BaseModel):
         return fields
 
     @classmethod
-    def model_validate_xml(cls, xml_bytes_or_str: str | bytes) -> Self:
-        root = etree.XML(xml_bytes_or_str)
+    def model_validate_xml(cls, xml: str | bytes | etree._Element) -> Self:
+        if isinstance(xml, etree._Element):
+            root = xml
+        else:
+            parser = etree.XMLParser()
+            root = etree.fromstring(xml, parser=parser)  # noqa: S320
+
+        extracted_data = extract_data(root, cls)
+        return cls(**extracted_data)
+
+    @classmethod
+    def model_validate_html(cls, html: str | bytes) -> Self:
+        parser = etree.HTMLParser(recover=True)
+        root = etree.fromstring(html, parser=parser)  # noqa: S320
         extracted_data = extract_data(root, cls)
         return cls(**extracted_data)
