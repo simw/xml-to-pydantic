@@ -299,3 +299,46 @@ def test_empty_results_with_defaults() -> None:
     assert model.str_field == "default"
     assert model.opt_str_field == "default"
     assert model.list_field == ["default"]
+
+
+def test_passing_in_lxml_element() -> None:
+    from lxml import etree
+
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>text1</element1>
+        <element2>4.1</element2>
+    </root>
+    """
+
+    root = etree.fromstring(xml_bytes)
+
+    class MyModel(XmlBaseModel):
+        element1: str
+        element2: float
+
+    model = MyModel.model_validate_xml(root)
+    assert model.element1 == "text1"
+    assert model.element2 == 4.1  # noqa: PLR2004
+
+
+def test_parsing_html() -> None:
+    html = b"""<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(XmlBaseModel):
+        title: str = XmlField(xpath="/html/head/title/text()")
+        paragraphs: list[str] = XmlField(xpath="/html/body/p/text()")
+
+    model = MyModel.model_validate_html(html)
+    assert model.title == "Title"
+    assert model.paragraphs == ["Paragraph 1", "Paragraph 2"]
