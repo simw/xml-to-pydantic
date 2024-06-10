@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from xml_to_pydantic import ConfigDict, XmlBaseModel
+import pytest
+
+from xml_to_pydantic import ConfigDict, XmlBaseModel, XmlParsingError
 
 
 def test_inferring_xpath() -> None:
@@ -125,3 +127,71 @@ def test_inferring_xpath_with_alias() -> None:
     model = RootModel.model_validate_xml(xml_bytes)
     assert model.my_element_1 == "value1"
     assert model.my_element_2.my_element_2a == ["text1", "text2"]
+
+
+def test_inferring_xpath_with_new_root() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <new-root>
+            <element1>value1</element1>
+            <element2>
+                <subel>
+                    <element2a>text1</element2a>
+                    <element2b>text2</element2b>
+                </subel>
+            </element2>
+        </new-root>
+    </root>
+    """
+
+    class Element2Model(XmlBaseModel):
+        model_config = ConfigDict(xpath_root="./subel")
+        element2a: str
+        element2b: str
+
+    class RootModel(XmlBaseModel):
+        model_config = ConfigDict(xpath_root="./new-root")
+        element1: str
+        element2: Element2Model
+
+    model = RootModel.model_validate_xml(xml_bytes)
+    assert model.element1 == "value1"
+    assert model.element2.element2a == "text1"
+    assert model.element2.element2b == "text2"
+
+
+def test_xpath_new_root_error_no_element() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <new-root>
+            <element1>value1</element1>
+        </new-root>
+    </root>
+    """
+
+    class Model(XmlBaseModel):
+        model_config = ConfigDict(xpath_root="./not-new-root")
+        element1: str
+
+    with pytest.raises(XmlParsingError):
+        Model.model_validate_xml(xml_bytes)
+
+
+def test_xpath_new_root_error_two_elements() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <new-root>
+            <element1>value1</element1>
+        </new-root>
+        <new-root>
+            <element1>value2</element1>
+        </new-root>
+    </root>
+    """
+
+    class Model(XmlBaseModel):
+        model_config = ConfigDict(xpath_root="./new-root")
+        element1: str
+
+    with pytest.raises(XmlParsingError):
+        Model.model_validate_xml(xml_bytes)

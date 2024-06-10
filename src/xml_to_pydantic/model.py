@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import types
-from typing import Any, Callable, Iterable, Union, cast
+from typing import Any, Callable, Iterable, cast
 
 from lxml import etree
 from pydantic import BaseModel
 from pydantic import ConfigDict as BaseConfigDict
 from pydantic.fields import FieldInfo
 from typing_extensions import Self, get_args, get_origin
+
+from .typing import _is_optional
 
 
 class XmlModelError(Exception):
@@ -18,8 +19,9 @@ class XmlParsingError(Exception):
     """Error when parsing XML using lxml"""
 
 
-class ConfigDict(BaseConfigDict):
+class ConfigDict(BaseConfigDict, total=False):
     xpath_generator: Callable[[str], str]
+    xpath_root: str
 
 
 # Similar to pydantic's Field, this is needed to be
@@ -39,26 +41,27 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
     field_xpaths = cls.xml_fields()
     field_infos = cls.model_fields
 
+    xpath_root = cast(ConfigDict, cls.model_config).get("xpath_root")
+    if xpath_root is not None:
+        new_root = root.xpath(xpath_root)
+        if len(new_root) != 1:
+            raise XmlParsingError(
+                f"Root xpath {cls.model_config.get('xpath_root')} did not "
+                "return exactly one element"
+            )
+        root = new_root[0]
+
     extracted_data = {}
     try:
         for field_name, xpath in field_xpaths.items():
             result = root.xpath(xpath, smart_strings=False)
             annotation = field_infos[field_name].annotation
+            _, annotation = _is_optional(annotation)
             # eg1 if the annotation is list[str], get <class list>
             # eg2 if the annotation is str, get <class str>
             # eg3 if the annotation is list[str] | None, get field_type = Union
             field_type = get_origin(annotation) or annotation
             field_args = get_args(annotation)
-
-            # Remove any optionality from the field type
-            # Note: different versions of python have different ways of detecting
-            # whether it's a Union / optional type
-            if field_type is Union or (
-                hasattr(types, "UnionType") and field_type is types.UnionType
-            ):
-                annotation = list(set(field_args) - {type(None)})[0]
-                field_type = get_origin(annotation) or annotation
-                field_args = get_args(annotation)
 
             if field_type is None:
                 # Note pydantic will error on model creation before we even get here
@@ -76,6 +79,9 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
             elif len(field_args) > 0 and hasattr(field_args[0], "xml_fields"):
                 result = [extract_data(elem, field_args[0]) for elem in result]
 
+            if len(result) == 0:
+                continue
+
             # lxml always returns a list. If we want a single value,
             # we need to extract it
             result_as_list = (
@@ -83,9 +89,6 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
                 and (not issubclass(field_type, (str, bytes, BaseModel)))
                 and issubclass(field_type, Iterable)
             )
-
-            if len(result) == 0:
-                continue
 
             if len(result) == 1 and not result_as_list:
                 result = result[0]
@@ -114,21 +117,11 @@ class XmlBaseModel(BaseModel):
             # If not, then should have /text() on the end, otherwise,
             # it's a nested model
             annotation = info.annotation
-            field_type = get_origin(annotation) or annotation
+            _, annotation = _is_optional(annotation)
             field_args = get_args(annotation)
 
-            if field_type is Union or (
-                hasattr(types, "UnionType") and field_type is types.UnionType
-            ):
-                annotation = list(set(field_args) - {type(None)})[0]
-                field_type = get_origin(annotation) or annotation
-                field_args = get_args(annotation)
-
-            # TODO: add alias generator / support
             xpath = f"./{field}"
-            xpath_gen = cast(
-                Callable[[str], str], cls.model_config.get("xpath_generator")
-            )
+            xpath_gen = cast(ConfigDict, cls.model_config).get("xpath_generator")
             if xpath_gen is not None:
                 xpath = f"./{xpath_gen(field)}"
 
