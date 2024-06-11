@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "xml-to-pydantic"
-version = "0.1"
+version = "0.2"
 description = ""
 authors = ["Simon Wicks <simw@users.noreply.github.com>"]
 readme = "README.md"
