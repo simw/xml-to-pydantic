@@ -20,14 +20,23 @@ class XmlParsingError(Exception):
 
 
 class ConfigDict(BaseConfigDict, total=False):
-    xpath_generator: Callable[[str], str]
-    xpath_root: str
+    xpath_generator: Callable[[str], str] | None
+    xpath_root: str | None
+    attribute_prefix: str
 
 
-# Similar to pydantic's Field, this is needed to be
-# able to return type Any, so as not to cause complaints
-# by type checkers
+DEFAULT_CONFIG = ConfigDict(
+    xpath_generator=None,
+    xpath_root=None,
+    attribute_prefix="attr_",
+)
+
+
 def XmlField(xpath: str, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
+    """
+    Simlar to pydantic's Field function, this is needed to be able
+    to return type Any, so as not to cause complaints by type checkers
+    """
     return XmlFieldInfo(xpath, *args, **kwargs)
 
 
@@ -35,6 +44,33 @@ class XmlFieldInfo(FieldInfo):
     def __init__(self, xpath: str, *args: Any, **kwargs: Any):
         self.xpath = xpath
         super().__init__(*args, **kwargs)
+
+
+def _generate_xpath(field: str, annotation: Any, config: ConfigDict) -> str:
+    _, annotation = _is_optional(annotation)
+    field_args = get_args(annotation)
+
+    attr_prefix = config["attribute_prefix"]
+    if field.startswith(attr_prefix):
+        xpath = "@"
+        field_path = field.replace(attr_prefix, "")
+    else:
+        xpath = "./"
+        field_path = field
+
+    xpath_gen = config["xpath_generator"]
+    if xpath_gen is not None:
+        field_path = xpath_gen(field_path)
+    xpath = xpath + field_path
+
+    if not (
+        hasattr(annotation, "xml_fields")
+        or (len(field_args) > 0 and hasattr(field_args[0], "xml_fields"))
+        or field.startswith(attr_prefix)
+    ):
+        xpath += "/text()"
+
+    return xpath
 
 
 def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any]:
@@ -107,32 +143,15 @@ class XmlBaseModel(BaseModel):
     @classmethod
     def xml_fields(cls) -> dict[str, str]:
         fields = {}
+        config = ConfigDict(**{**DEFAULT_CONFIG, **cls.model_config})
+
         for field, info in cls.model_fields.items():
             if isinstance(info, XmlFieldInfo) and info.xpath is not None:
-                fields[field] = info.xpath
-                continue
-
-            # Need to check whether it's an XmlBaseModel
-            # (or a list, or an optional ...)
-            # If not, then should have /text() on the end, otherwise,
-            # it's a nested model
-            annotation = info.annotation
-            _, annotation = _is_optional(annotation)
-            field_args = get_args(annotation)
-
-            xpath = f"./{field}"
-            xpath_gen = cast(ConfigDict, cls.model_config).get("xpath_generator")
-            if xpath_gen is not None:
-                xpath = f"./{xpath_gen(field)}"
-
-            if (
-                hasattr(annotation, "xml_fields")
-                or len(field_args) > 0
-                and hasattr(field_args[0], "xml_fields")
-            ):
-                fields[field] = xpath
+                xpath = info.xpath
             else:
-                fields[field] = xpath + "/text()"
+                xpath = _generate_xpath(field, info.annotation, config)
+
+            fields[field] = xpath
 
         return fields
 

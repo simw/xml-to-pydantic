@@ -4,6 +4,7 @@ from typing import List, Literal, Optional
 
 import pydantic
 import pytest
+from typing_extensions import Annotated
 
 from xml_to_pydantic import XmlBaseModel, XmlField, XmlParsingError
 
@@ -37,6 +38,34 @@ def test_xml_parses_single_level_model() -> None:
     assert model.element1 == "text1"
     assert model.element2 == 4.53  # noqa: PLR2004
     assert model.element3 == 56  # noqa: PLR2004
+    assert model.element4_value == "value4"
+    assert model.element5_value == "value5"
+    assert model.element5 == "text5"
+
+
+def test_xml_xmlfield_as_annotated() -> None:
+    """
+    Similar to pydantic, the (Xml)Field can be declared as
+    Annotated, instead of as a field value.
+
+    Note: pydantic deals with this itself when it constructs the
+    model_fields dictionary.
+    """
+
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1>text1</element1>
+        <element2>4.53</element2>
+    </root>
+    """
+
+    class MyModel(XmlBaseModel):
+        element1: Annotated[str, XmlField(xpath="./element1/text()")]
+        element2: Annotated[float, XmlField(xpath="./element2/text()")]
+
+    model = MyModel.model_validate_xml(xml_bytes)
+    assert model.element1 == "text1"
+    assert model.element2 == 4.53  # noqa: PLR2004
 
 
 def test_xml_parses_direct_xml_fields() -> None:
