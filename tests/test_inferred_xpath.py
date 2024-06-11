@@ -195,3 +195,47 @@ def test_xpath_new_root_error_two_elements() -> None:
 
     with pytest.raises(XmlParsingError):
         Model.model_validate_xml(xml_bytes)
+
+
+def test_xpath_attribute_model_field() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1 attribute="value1">
+            <subel>text1</subel>
+        </element1>
+    </root>
+    """
+
+    class Element1(XmlBaseModel):
+        attr_attribute: str
+        subel: str
+
+    class Model(XmlBaseModel):
+        element1: Element1
+
+    model = Model.model_validate_xml(xml_bytes)
+    assert model.element1.attr_attribute == "value1"
+    assert model.element1.subel == "text1"
+
+
+def test_xpath_attribute_model_field_with_different_prefix() -> None:
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <root>
+        <element1 attribute="value1">
+            <subel>text1</subel>
+        </element1>
+    </root>
+    """
+
+    class Element1(XmlBaseModel):
+        model_config = ConfigDict(attribute_prefix="at_")
+
+        at_attribute: str
+        subel: str
+
+    class Model(XmlBaseModel):
+        element1: Element1
+
+    model = Model.model_validate_xml(xml_bytes)
+    assert model.element1.at_attribute == "value1"
+    assert model.element1.subel == "text1"
