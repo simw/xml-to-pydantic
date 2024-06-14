@@ -6,9 +6,10 @@ on when examining the type annotations of a field in a model.
 
 import sys
 import types
-from typing import Iterable, List, Literal, Optional, Union, get_args, get_origin
+from typing import Iterable, List, Literal, Optional, Union
 
 import pytest
+from typing_extensions import get_args, get_origin
 
 
 def test_string() -> None:
@@ -191,3 +192,21 @@ def test_list_or_none() -> None:
         assert get_origin(get_args(t)[0]) == list
         assert isinstance(get_origin(get_args(t)[0]), type)
         assert issubclass(get_origin(get_args(t)[0]), Iterable)
+
+
+def test_union() -> None:
+    t = Union[str, int]
+
+    assert t == Union[str, int]
+    assert not isinstance(t, type)
+    with pytest.raises(TypeError):
+        issubclass(t, str)  # type: ignore
+    with pytest.raises(TypeError):
+        issubclass(t, Iterable)  # type: ignore
+
+    assert get_origin(t) == Union
+    assert not isinstance(get_origin(t), type)
+    with pytest.raises(TypeError):
+        issubclass(get_origin(t), str)  # type: ignore
+
+    assert get_args(t) == (str, int)
