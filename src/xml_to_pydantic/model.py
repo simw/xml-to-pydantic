@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, cast
+from typing import Any, Callable, Dict, Iterable, List, Union, cast
 
 from lxml import etree
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic import ConfigDict as BaseConfigDict
 from pydantic.fields import FieldInfo
 from typing_extensions import Self, get_args, get_origin
 
-from .typing import _is_optional
+from .typing import _is_optional, _is_union
 
 
 class XmlModelError(Exception):
@@ -73,10 +73,63 @@ def _generate_xpath(field: str, annotation: Any, config: ConfigDict) -> str:
     return xpath
 
 
-def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any]:
-    field_xpaths = cls.xml_fields()
-    field_infos = cls.model_fields
+def _extract_field(
+    items: list[etree._Element] | list[str], annotation: Any
+) -> str | list[str] | dict[str, Any] | list[dict[str, Any]]:
+    _, annotation = _is_optional(annotation)
+    field_type = get_origin(annotation) or annotation
+    field_args = get_args(annotation)
 
+    # lxml always returns a list. If we want a single value,
+    # we need to extract it
+    result_as_list = (
+        isinstance(field_type, type)
+        and (not issubclass(field_type, (str, bytes, BaseModel)))
+        and issubclass(field_type, Iterable)
+    )
+
+    # Is XmlBaseModel
+    # Note: in python 3.9 -> 3.11, isinstance(list[str], type) is True, but
+    # issubclass(list[str], XmlBaseModel) gives an exception.
+    # Hence, duck typing may be a better solution here.
+    if all(isinstance(item, str) for item in items):
+        result = cast(Union[List[str], List[Dict[str, Any]]], items)
+
+    elif hasattr(field_type, "xml_fields"):
+        items = cast(List[etree._Element], items)
+        result = [_extract_model(item, field_type) for item in items]
+
+    elif _is_union(field_type) and all(
+        hasattr(arg, "xml_fields") for arg in field_args
+    ):
+        items = cast(List[etree._Element], items)
+        result = []
+        for arg in field_args:
+            try:
+                result = [_extract_model(item, arg) for item in items]
+                result = [arg.model_validate(item) for item in result]
+                break
+            except ValidationError:  # pragam: no cover  # noqa: S110
+                # Tests might not get here, as python / pydantic may not
+                # preserve the ordering of the union type, so a test might
+                # get the correct type on the first try
+                pass  # pragma: no cover
+
+    # Is eg list[XmlBaseModel]
+    elif result_as_list and hasattr(field_args[0], "xml_fields"):
+        items = cast(List[etree._Element], items)
+        result = [_extract_model(item, field_args[0]) for item in items]
+
+    else:
+        raise XmlModelError(f"Unable to use type {annotation} in extraction.")
+
+    if len(result) == 1 and not result_as_list:
+        return result[0]
+
+    return result
+
+
+def _extract_model(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any]:
     xpath_root = cast(ConfigDict, cls.model_config).get("xpath_root")
     if xpath_root is not None:
         new_root = root.xpath(xpath_root)
@@ -89,47 +142,12 @@ def extract_data(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any
 
     extracted_data = {}
     try:
-        for field_name, xpath in field_xpaths.items():
-            result = root.xpath(xpath, smart_strings=False)
-            annotation = field_infos[field_name].annotation
-            _, annotation = _is_optional(annotation)
-            # eg1 if the annotation is list[str], get <class list>
-            # eg2 if the annotation is str, get <class str>
-            # eg3 if the annotation is list[str] | None, get field_type = Union
-            field_type = get_origin(annotation) or annotation
-            field_args = get_args(annotation)
-
-            if field_type is None:
-                # Note pydantic will error on model creation before we even get here
-                # But this makes mypy happy on the issubclass line later
-                raise XmlModelError(
-                    f"Field {field_name} has no type annotation"
-                )  # pragma: no cover
-
-            # In python 3.9 -> 3.11, isinstance(list[str], type) is True, but
-            # issubclass(list[str], XmlBaseModel) gives an exception.
-            # Hence, duck typing may be a better solution here.
-            if hasattr(field_type, "xml_fields"):
-                result = [extract_data(elem, field_type) for elem in result]
-
-            elif len(field_args) > 0 and hasattr(field_args[0], "xml_fields"):
-                result = [extract_data(elem, field_args[0]) for elem in result]
-
-            if len(result) == 0:
+        for field_name, xpath in cls.xml_fields().items():
+            annotation = cls.model_fields[field_name].annotation
+            elements = root.xpath(xpath, smart_strings=False)
+            if len(elements) == 0:
                 continue
-
-            # lxml always returns a list. If we want a single value,
-            # we need to extract it
-            result_as_list = (
-                isinstance(field_type, type)
-                and (not issubclass(field_type, (str, bytes, BaseModel)))
-                and issubclass(field_type, Iterable)
-            )
-
-            if len(result) == 1 and not result_as_list:
-                result = result[0]
-
-            extracted_data[field_name] = result
+            extracted_data[field_name] = _extract_field(elements, annotation)
 
     except (AttributeError, etree.XPathError) as err:
         raise XmlParsingError(
@@ -163,12 +181,12 @@ class XmlBaseModel(BaseModel):
             parser = etree.XMLParser()
             root = etree.fromstring(xml, parser=parser)  # noqa: S320
 
-        extracted_data = extract_data(root, cls)
-        return cls(**extracted_data)
+        extracted_data = _extract_model(root, cls)
+        return cls.model_validate(extracted_data)
 
     @classmethod
     def model_validate_html(cls, html: str | bytes) -> Self:
         parser = etree.HTMLParser(recover=True)
         root = etree.fromstring(html, parser=parser)  # noqa: S320
-        extracted_data = extract_data(root, cls)
-        return cls(**extracted_data)
+        extracted_data = _extract_model(root, cls)
+        return cls.model_validate(extracted_data)
