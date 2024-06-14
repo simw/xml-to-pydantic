@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, cast
+from typing import Any, Callable, Dict, Iterable, List, Union, cast
 
 from lxml import etree
 from pydantic import BaseModel, ValidationError
@@ -73,7 +73,9 @@ def _generate_xpath(field: str, annotation: Any, config: ConfigDict) -> str:
     return xpath
 
 
-def _extract_field(items: list[etree._Element] | list[str], annotation: Any) -> Any:
+def _extract_field(
+    items: list[etree._Element] | list[str], annotation: Any
+) -> str | list[str] | dict[str, Any] | list[dict[str, Any]]:
     _, annotation = _is_optional(annotation)
     field_type = get_origin(annotation) or annotation
     field_args = get_args(annotation)
@@ -91,16 +93,16 @@ def _extract_field(items: list[etree._Element] | list[str], annotation: Any) -> 
     # issubclass(list[str], XmlBaseModel) gives an exception.
     # Hence, duck typing may be a better solution here.
     if all(isinstance(item, str) for item in items):
-        result: list[str] | list[dict[str, Any]] = cast(list[str], items)
+        result = cast(Union[List[str], List[Dict[str, Any]]], items)
 
     elif hasattr(field_type, "xml_fields"):
-        items = cast(list[etree._Element], items)
+        items = cast(List[etree._Element], items)
         result = [_extract_model(item, field_type) for item in items]
 
     elif _is_union(field_type) and all(
         hasattr(arg, "xml_fields") for arg in field_args
     ):
-        items = cast(list[etree._Element], items)
+        items = cast(List[etree._Element], items)
         result = []
         for arg in field_args:
             try:
@@ -115,7 +117,7 @@ def _extract_field(items: list[etree._Element] | list[str], annotation: Any) -> 
 
     # Is eg list[XmlBaseModel]
     elif result_as_list and hasattr(field_args[0], "xml_fields"):
-        items = cast(list[etree._Element], items)
+        items = cast(List[etree._Element], items)
         result = [_extract_model(item, field_args[0]) for item in items]
 
     else:
