@@ -39,12 +39,12 @@ the alias_generator has no effect.
 ```py
 from typing import Union
 
-from xml_to_pydantic import XmlBaseModel, XmlField
+from xml_to_pydantic import XmlBaseModel
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
   <subject>
-    <element2>value1</element2> 
+    <element2>value1</element2>
   </subject>
 </root>
 """

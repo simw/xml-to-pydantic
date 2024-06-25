@@ -9,7 +9,7 @@ ROOT = Path(__file__).parent.parent
 @pytest.mark.parametrize(
     "example", find_examples(ROOT / "docs", ROOT / "README.md"), ids=str
 )
-def test_docs_linting(example: CodeExample, eval_example: EvalExample):
+def test_docs_linting(example: CodeExample, eval_example: EvalExample) -> None:
     if eval_example.update_examples:
         eval_example.format(example)
         eval_example.run_print_update(example)
