@@ -67,9 +67,11 @@ html_bytes = b"""
 </html>
 """
 
+
 class MainContent(XmlBaseModel):
     model_config = ConfigDict(xpath_root="/html/body/main")
     p: list[str]
+
 
 result = MainContent.model_validate_html(html_bytes)
 print(result)
@@ -78,7 +80,6 @@ print(result)
 
 ```py
 from xml_to_pydantic import XmlBaseModel
-
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -104,7 +105,6 @@ to how pydantic allows specifying an alias for a field):
 ```py
 from xml_to_pydantic import XmlBaseModel, XmlField
 
-
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <element>4.53</element>
@@ -128,7 +128,6 @@ The parsing can also deal with nested models and lists:
 ```py
 from xml_to_pydantic import XmlBaseModel, XmlField
 
-
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <level1>
@@ -139,6 +138,7 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <level11>value11</level11>
 </root>
 """
+
 
 class NextLevel(XmlBaseModel):
     level2: list[str] = XmlField(xpath="./level2/text()")

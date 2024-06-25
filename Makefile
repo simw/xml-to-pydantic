@@ -13,6 +13,11 @@ lintable: prepare
 	poetry run ruff check --fix $(sources)
 
 
+.PHONY: lintable-docs
+lintable-docs: prepare
+	poetry run python -m pytest tests/test_docs.py --update-examples
+
+
 .PHONY: lint
 lint: prepare
 	poetry check
@@ -27,15 +32,16 @@ test: prepare
 	poetry run coverage report
 
 
+.PHONY: doctest
+doctest: prepare
+	poetry run python -m pytest tests/test_docs.py
+
+
 # Test specific (earlier) versions of dependencies
 .PHONY: test-dep-versions
 test-dep-versions: prepare
-	echo "Not implemented yet"
-# 	poetry run pip install package=EARLIER_VERSION 
-# 	poetry run python -m pytest
-
-# 	poetry run pip install another_package=EARLIER_VERSION
-# 	poetry run python -m pytest
+	poetry run pip install pydantic==2.0
+	poetry run python -m pytest
 
 
 .PHONY: clean

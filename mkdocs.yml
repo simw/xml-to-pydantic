@@ -1,0 +1,12 @@
+site_name: xml-to-pydantic
+strict: true
+
+theme:
+  name: material
+
+nav:
+- Getting Started:
+  - Welcome: index.md
+  - First Steps: started.md
+  - Models: models.md
+  - Fields: fields.md
