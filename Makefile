@@ -40,7 +40,7 @@ doctest: prepare
 # Test specific (earlier) versions of dependencies
 .PHONY: test-dep-versions
 test-dep-versions: prepare
-	poetry run pip install pydantic==2.0
+	poetry run pip install pydantic==2.6.0
 	poetry run python -m pytest
 
 

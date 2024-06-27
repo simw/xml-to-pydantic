@@ -33,7 +33,7 @@ packages = [{include = "xml_to_pydantic", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-pydantic = "^2.0"
+pydantic = "^2.6"
 lxml = "^5.0"
 typing-extensions = "^4.6.1"
 
