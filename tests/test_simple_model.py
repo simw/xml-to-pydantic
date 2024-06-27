@@ -371,3 +371,23 @@ def test_parsing_html() -> None:
     model = MyModel.model_validate_html(html)
     assert model.title == "Title"
     assert model.paragraphs == ["Paragraph 1", "Paragraph 2"]
+
+
+def test_string_xpath_function() -> None:
+    html = b"""<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(XmlBaseModel):
+        title: str = XmlField(xpath="string(/html/head/title)")
+
+    model = MyModel.model_validate_html(html)
+    assert model.title == "Title"
