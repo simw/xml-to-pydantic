@@ -61,7 +61,7 @@ def test_list() -> None:
             issubclass(t, Iterable)
 
         assert get_origin(t) == list
-        assert issubclass(get_origin(t), Iterable)  # type: ignore
+        assert issubclass(get_origin(t), Iterable)
 
         assert get_args(t) == (str,)
 

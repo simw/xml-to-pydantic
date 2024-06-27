@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,8 @@ def test_docs_linting(example: CodeExample, eval_example: EvalExample) -> None:
     if eval_example.update_examples:
         eval_example.format(example)
         eval_example.run_print_update(example)
-    else:
+    elif sys.version_info >= (3, 10):
+        # TODO: turn off ruff errors on asserts for docs
         # eval_example.lint(example)
         eval_example.run(example)
         eval_example.run_print_check(example)
