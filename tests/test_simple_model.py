@@ -6,7 +6,7 @@ import pydantic
 import pytest
 from typing_extensions import Annotated
 
-from xml_to_pydantic import DocField, DocModel, XmlParsingError
+from xml_to_pydantic import DocField, DocModel, DocParsingError
 
 
 def test_xml_parses_single_level_model() -> None:
@@ -119,7 +119,7 @@ def test_field_without_annotation() -> None:
 
 def test_invalid_xpath_fails() -> None:
     """If the xpath is invalid, then the library
-    should raise the appropriate error (XmlParsingError)."""
+    should raise the appropriate error (DocParsingError)."""
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -130,7 +130,7 @@ def test_invalid_xpath_fails() -> None:
     class MyModel(DocModel):
         element1: float = DocField(xpath="./element1@value")
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         MyModel.model_validate_xml(xml_bytes)
 
 

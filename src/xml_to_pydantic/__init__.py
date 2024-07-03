@@ -1,4 +1,4 @@
-from .model import ConfigDict, DocField, DocModel, XmlModelError, XmlParsingError
+from .model import ConfigDict, DocField, DocModel, DocModelError, DocParsingError
 
 __version__ = "0.2"
 
@@ -7,6 +7,6 @@ __all__ = [
     "ConfigDict",
     "DocModel",
     "DocField",
-    "XmlModelError",
-    "XmlParsingError",
+    "DocModelError",
+    "DocParsingError",
 ]

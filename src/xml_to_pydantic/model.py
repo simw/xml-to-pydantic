@@ -11,11 +11,11 @@ from typing_extensions import Self, get_args, get_origin
 from .typing import _is_optional, _is_union
 
 
-class XmlModelError(Exception):
+class DocModelError(Exception):
     """Error in settings creating an XML model"""
 
 
-class XmlParsingError(Exception):
+class DocParsingError(Exception):
     """Error when parsing XML using lxml"""
 
 
@@ -121,7 +121,7 @@ def _extract_field(
         result = [_extract_model(item, field_args[0]) for item in items]
 
     else:
-        raise XmlModelError(f"Unable to use type {annotation} in extraction.")
+        raise DocModelError(f"Unable to use type {annotation} in extraction.")
 
     if len(result) == 1 and not result_as_list:
         return result[0]
@@ -134,7 +134,7 @@ def _extract_model(root: etree._Element, cls: type[DocModel]) -> dict[str, Any]:
     if xpath_root is not None:
         new_root = root.xpath(xpath_root)
         if len(new_root) != 1:
-            raise XmlParsingError(
+            raise DocParsingError(
                 f"Root xpath {cls.model_config.get('xpath_root')} did not "
                 "return exactly one element"
             )
@@ -150,7 +150,7 @@ def _extract_model(root: etree._Element, cls: type[DocModel]) -> dict[str, Any]:
             extracted_data[field_name] = _extract_field(elements, annotation)
 
     except (AttributeError, etree.XPathError) as err:
-        raise XmlParsingError(
+        raise DocParsingError(
             f"Error parsing field {field_name} on class {cls}"
         ) from err
 

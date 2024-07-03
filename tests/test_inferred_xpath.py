@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from xml_to_pydantic import ConfigDict, DocModel, XmlParsingError
+from xml_to_pydantic import ConfigDict, DocModel, DocParsingError
 
 
 def test_inferring_xpath() -> None:
@@ -173,7 +173,7 @@ def test_xpath_new_root_error_no_element() -> None:
         model_config = ConfigDict(xpath_root="./not-new-root")
         element1: str
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         Model.model_validate_xml(xml_bytes)
 
 
@@ -193,7 +193,7 @@ def test_xpath_new_root_error_two_elements() -> None:
         model_config = ConfigDict(xpath_root="./new-root")
         element1: str
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         Model.model_validate_xml(xml_bytes)
 
 

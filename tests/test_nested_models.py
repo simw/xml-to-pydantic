@@ -3,7 +3,7 @@ from __future__ import annotations
 import pydantic
 import pytest
 
-from xml_to_pydantic import DocField, DocModel, XmlModelError
+from xml_to_pydantic import DocField, DocModel, DocModelError
 
 
 def test_nested_models() -> None:
@@ -247,6 +247,6 @@ def test_union_of_models_with_str() -> None:
         </element2>
     </root>
     """
-    with pytest.raises(XmlModelError) as exc_info:
+    with pytest.raises(DocModelError) as exc_info:
         MyModel.model_validate_xml(xml_bytes)
     assert "Unable to use type" in str(exc_info)
