@@ -43,7 +43,7 @@ The HTML or XML data is extracted using XPath. For simple documents, the XPath c
 from the model:
 
 ```py
-from xml_to_pydantic import ConfigDict, XmlBaseModel
+from xml_to_pydantic import ConfigDict, DocModel
 
 html_bytes = b"""
 <!doctype html>
@@ -68,7 +68,7 @@ html_bytes = b"""
 """
 
 
-class MainContent(XmlBaseModel):
+class MainContent(DocModel):
     model_config = ConfigDict(xpath_root="/html/body/main")
     p: list[str]
 
@@ -79,7 +79,7 @@ print(result)
 ```
 
 ```py
-from xml_to_pydantic import XmlBaseModel
+from xml_to_pydantic import DocModel
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -89,7 +89,7 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class MyModel(XmlBaseModel):
+class MyModel(DocModel):
     element: list[float]
 
 
@@ -103,7 +103,7 @@ convenient, and a better approach is supplying the xpath directly (similar
 to how pydantic allows specifying an alias for a field):
 
 ```py
-from xml_to_pydantic import XmlBaseModel, XmlField
+from xml_to_pydantic import DocModel, DocField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -113,9 +113,9 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class MyModel(XmlBaseModel):
-    number: float = XmlField(xpath="./element/text()")
-    href: str = XmlField(xpath="./a/@href")
+class MyModel(DocModel):
+    number: float = DocField(xpath="./element/text()")
+    href: str = DocField(xpath="./a/@href")
 
 
 model = MyModel.model_validate_xml(xml_bytes)
@@ -126,7 +126,7 @@ print(model)
 The parsing can also deal with nested models and lists:
 
 ```py
-from xml_to_pydantic import XmlBaseModel, XmlField
+from xml_to_pydantic import DocModel, DocField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -140,13 +140,13 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class NextLevel(XmlBaseModel):
-    level2: list[str] = XmlField(xpath="./level2/text()")
+class NextLevel(DocModel):
+    level2: list[str] = DocField(xpath="./level2/text()")
 
 
-class MyModel(XmlBaseModel):
-    next_level: NextLevel = XmlField(xpath="./level1")
-    level_11: list[str] = XmlField(xpath="./level11/text()")
+class MyModel(DocModel):
+    next_level: NextLevel = DocField(xpath="./level1")
+    level_11: list[str] = DocField(xpath="./level11/text()")
 
 
 model = MyModel.model_validate_xml(xml_bytes)

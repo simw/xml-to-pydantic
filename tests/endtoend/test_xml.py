@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BeforeValidator
 from typing_extensions import Annotated
 
-from xml_to_pydantic import ConfigDict, XmlBaseModel, XmlField
+from xml_to_pydantic import ConfigDict, DocField, DocModel
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -26,15 +26,15 @@ def load_patents() -> list[bytes]:
 
 
 def test_simple_end_to_end() -> None:
-    class Simple(XmlBaseModel):
-        title: str = XmlField(
+    class Simple(DocModel):
+        title: str = DocField(
             xpath="/us-patent-grant/us-bibliographic-data-grant/invention-title/text()"
         )
-        assignees: list[str] | None = XmlField(
+        assignees: list[str] | None = DocField(
             xpath="/us-patent-grant/us-bibliographic-data-grant/assignees/assignee/addressbook/orgname/text()",
             default=None,
         )
-        claims: list[str] = XmlField(
+        claims: list[str] = DocField(
             xpath="/us-patent-grant/claims/claim/claim-text/text()"
         )
 
@@ -57,7 +57,7 @@ def test_complex_end_to_end() -> None:
     def xpath_generator(field_name: str) -> str:
         return field_name.replace("_", "-")
 
-    class DashToUnderscore(XmlBaseModel):
+    class DashToUnderscore(DocModel):
         model_config = ConfigDict(xpath_generator=xpath_generator)
 
     class PublicationRefDocId(DashToUnderscore):

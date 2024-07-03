@@ -32,15 +32,15 @@ DEFAULT_CONFIG = ConfigDict(
 )
 
 
-def XmlField(xpath: str, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
+def DocField(xpath: str, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
     """
     Simlar to pydantic's Field function, this is needed to be able
     to return type Any, so as not to cause complaints by type checkers
     """
-    return XmlFieldInfo(xpath, *args, **kwargs)
+    return DocFieldInfo(xpath, *args, **kwargs)
 
 
-class XmlFieldInfo(FieldInfo):
+class DocFieldInfo(FieldInfo):
     def __init__(self, xpath: str, *args: Any, **kwargs: Any):
         self.xpath = xpath
         super().__init__(*args, **kwargs)
@@ -88,9 +88,9 @@ def _extract_field(
         and issubclass(field_type, Iterable)
     )
 
-    # Is XmlBaseModel
+    # Is DocModel
     # Note: in python 3.9 -> 3.11, isinstance(list[str], type) is True, but
-    # issubclass(list[str], XmlBaseModel) gives an exception.
+    # issubclass(list[str], DocModel) gives an exception.
     # Hence, duck typing may be a better solution here.
     if all(isinstance(item, str) for item in items):
         result = cast(Union[List[str], List[Dict[str, Any]]], items)
@@ -115,7 +115,7 @@ def _extract_field(
                 # get the correct type on the first try
                 pass  # pragma: no cover
 
-    # Is eg list[XmlBaseModel]
+    # Is eg list[DocModel]
     elif result_as_list and hasattr(field_args[0], "xml_fields"):
         items = cast(List[etree._Element], items)
         result = [_extract_model(item, field_args[0]) for item in items]
@@ -129,7 +129,7 @@ def _extract_field(
     return result
 
 
-def _extract_model(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, Any]:
+def _extract_model(root: etree._Element, cls: type[DocModel]) -> dict[str, Any]:
     xpath_root = cast(ConfigDict, cls.model_config).get("xpath_root")
     if xpath_root is not None:
         new_root = root.xpath(xpath_root)
@@ -157,14 +157,14 @@ def _extract_model(root: etree._Element, cls: type[XmlBaseModel]) -> dict[str, A
     return extracted_data
 
 
-class XmlBaseModel(BaseModel):
+class DocModel(BaseModel):
     @classmethod
     def xml_fields(cls) -> dict[str, str]:
         fields = {}
         config = ConfigDict(**{**DEFAULT_CONFIG, **cls.model_config})
 
         for field, info in cls.model_fields.items():
-            if isinstance(info, XmlFieldInfo) and info.xpath is not None:
+            if isinstance(info, DocFieldInfo) and info.xpath is not None:
                 xpath = info.xpath
             else:
                 xpath = _generate_xpath(field, info.annotation, config)
