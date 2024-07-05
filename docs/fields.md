@@ -10,7 +10,7 @@ The alias_generator takes in the python field name and outputs
 the HTML / XML document tag.
 
 ```py
-from xml_to_pydantic import ConfigDict, XmlBaseModel
+from xml_to_pydantic import ConfigDict, DocModel
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -20,7 +20,7 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class MyModel(XmlBaseModel):
+class MyModel(DocModel):
     model_config = ConfigDict(xpath_generator=lambda x: x.replace("_", "-"))
     element_1: float
     element_2: str
@@ -31,7 +31,7 @@ print(model)
 #> element_1=4.53 element_2='hello'
 ```
 
-If all fields are defined using XPath directly on XmlField, then
+If all fields are defined using XPath directly on DocField, then
 the alias_generator has no effect.
 
 ## Unions
@@ -39,7 +39,7 @@ the alias_generator has no effect.
 ```py
 from typing import Union
 
-from xml_to_pydantic import XmlBaseModel
+from xml_to_pydantic import DocModel
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -50,15 +50,15 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class Element1(XmlBaseModel):
+class Element1(DocModel):
     element1: str
 
 
-class Element2(XmlBaseModel):
+class Element2(DocModel):
     element2: str
 
 
-class MyModel(XmlBaseModel):
+class MyModel(DocModel):
     subject: Union[Element1, Element2]
 
 

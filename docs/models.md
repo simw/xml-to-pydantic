@@ -3,7 +3,7 @@
 ## Model Usage
 
 In xml-to-pydantic, the mapping from HTML / XML to Python object
-fields is through `XmlBaseModel`.
+fields is through `DocModel`.
 
 This is very similar to BaseModel from Pydantic (in fact, it extends it),
 and how it extracts data from JSON or Python dictionaries.
@@ -13,7 +13,7 @@ either be inferred from the structure of the model (if the HTML / XML
 structure is simple). Here, this is applied to an HTML document.
 
 ```py
-from xml_to_pydantic import ConfigDict, XmlBaseModel
+from xml_to_pydantic import ConfigDict, DocModel
 
 html_bytes = b"""
 <!doctype html>
@@ -38,7 +38,7 @@ html_bytes = b"""
 """
 
 
-class MainContent(XmlBaseModel):
+class MainContent(DocModel):
     model_config = ConfigDict(xpath_root="/html/body/main")
     p: list[str]
 
@@ -52,7 +52,7 @@ Alternatively, explicit XPath can be declared
 for each field, here applied to an XML document.
 
 ```py
-from xml_to_pydantic import XmlBaseModel, XmlField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -62,9 +62,9 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class MyModel(XmlBaseModel):
-    number: float = XmlField(xpath="./element/text()")
-    href: str = XmlField(xpath="./a/@href")
+class MyModel(DocModel):
+    number: float = XpathField(query="./element/text()")
+    href: str = XpathField(query="./a/@href")
 
 
 model = MyModel.model_validate_xml(xml_bytes)
@@ -87,7 +87,7 @@ and properties (as described in the [Pydantic docs](https://docs.pydantic.dev/la
 ## Nested Models
 
 ```py
-from xml_to_pydantic import XmlBaseModel, XmlField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -100,12 +100,12 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
-class Element2(XmlBaseModel):
-    href: list[str] = XmlField(xpath="./a/@href")
+class Element2(DocModel):
+    href: list[str] = XpathField(query="./a/@href")
 
 
-class MyModel(XmlBaseModel):
-    number: float = XmlField(xpath="./element1/text()")
+class MyModel(DocModel):
+    number: float = XpathField(query="./element1/text()")
     element2: Element2
 
 

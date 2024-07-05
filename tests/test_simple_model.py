@@ -6,7 +6,7 @@ import pydantic
 import pytest
 from typing_extensions import Annotated
 
-from xml_to_pydantic import XmlBaseModel, XmlField, XmlParsingError
+from xml_to_pydantic import DocField, DocModel, DocParsingError, XpathField
 
 
 def test_xml_parses_single_level_model() -> None:
@@ -14,7 +14,7 @@ def test_xml_parses_single_level_model() -> None:
 
     This test defines the xpath in the model definition
     directly, in contrast to the next test where the xpath
-    is written in the xml_fields function."""
+    is written in the xpath_fields function."""
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -26,13 +26,13 @@ def test_xml_parses_single_level_model() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: str = XmlField(xpath="./element1/text()")
-        element2: float = XmlField(xpath="./element2/text()")
-        element3: int = XmlField(xpath="./element3/text()")
-        element4_value: str = XmlField(xpath="./element4/@value")
-        element5_value: str = XmlField(xpath="./element5/@value")
-        element5: str = XmlField(xpath="./element5/text()")
+    class MyModel(DocModel):
+        element1: str = DocField(query_type="xpath", query="./element1/text()")
+        element2: float = XpathField(query="./element2/text()")
+        element3: int = XpathField(query="./element3/text()")
+        element4_value: str = XpathField(query="./element4/@value")
+        element5_value: str = XpathField(query="./element5/@value")
+        element5: str = XpathField(query="./element5/text()")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "text1"
@@ -43,7 +43,7 @@ def test_xml_parses_single_level_model() -> None:
     assert model.element5 == "text5"
 
 
-def test_xml_xmlfield_as_annotated() -> None:
+def test_xml_docfield_as_annotated() -> None:
     """
     Similar to pydantic, the (Xml)Field can be declared as
     Annotated, instead of as a field value.
@@ -59,19 +59,19 @@ def test_xml_xmlfield_as_annotated() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: Annotated[str, XmlField(xpath="./element1/text()")]
-        element2: Annotated[float, XmlField(xpath="./element2/text()")]
+    class MyModel(DocModel):
+        element1: Annotated[str, XpathField(query="./element1/text()")]
+        element2: Annotated[float, XpathField(query="./element2/text()")]
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "text1"
     assert model.element2 == 4.53  # noqa: PLR2004
 
 
-def test_xml_parses_direct_xml_fields() -> None:
+def test_xml_parses_direct_xpath_fields() -> None:
     """Testing single level model, but with xpath
-    defined in the xml_fields function, instead of on
-    the model using XmlField.
+    defined in the xpath_fields function, instead of on
+    the model using DocField.
 
     While more verbose, this might be prefered for separation
     of concerns or code readability for complex models."""
@@ -85,7 +85,7 @@ def test_xml_parses_direct_xml_fields() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
+    class MyModel(DocModel):
         element1: str
         element2: float
         element3: int
@@ -94,7 +94,7 @@ def test_xml_parses_direct_xml_fields() -> None:
         element5: str
 
         @classmethod
-        def xml_fields(cls) -> dict[str, str]:
+        def xpath_fields(cls) -> dict[str, str]:
             return {
                 "element1": "./element1/text()",
                 "element2": "./element2/text()",
@@ -113,13 +113,13 @@ def test_xml_parses_direct_xml_fields() -> None:
 def test_field_without_annotation() -> None:
     with pytest.raises(pydantic.errors.PydanticUserError):
 
-        class MyModel(XmlBaseModel):
-            element1 = XmlField(xpath="./element1@value")
+        class MyModel(DocModel):
+            element1 = XpathField(query="./element1@value")
 
 
 def test_invalid_xpath_fails() -> None:
     """If the xpath is invalid, then the library
-    should raise the appropriate error (XmlParsingError)."""
+    should raise the appropriate error (DocParsingError)."""
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -127,10 +127,10 @@ def test_invalid_xpath_fails() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: float = XmlField(xpath="./element1@value")
+    class MyModel(DocModel):
+        element1: float = XpathField(query="./element1@value")
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         MyModel.model_validate_xml(xml_bytes)
 
 
@@ -144,8 +144,8 @@ def test_invalid_text_to_float() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: float = XmlField(xpath="./element1/text()")
+    class MyModel(DocModel):
+        element1: float = XpathField(query="./element1/text()")
 
     with pytest.raises(pydantic.ValidationError):
         MyModel.model_validate_xml(xml_bytes)
@@ -159,15 +159,15 @@ def test_list_to_str_fails() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: str = XmlField(xpath="./element1/text()")
+    class MyModel(DocModel):
+        element1: str = XpathField(query="./element1/text()")
 
     with pytest.raises(pydantic.ValidationError):
         MyModel.model_validate_xml(xml_bytes)
 
 
 def test_non_xml_field_not_required() -> None:
-    """All fields need a value, and for XmlBaseModels this
+    """All fields need a value, and for DocModels this
     usually comes from the XML. But if there's a default
     value, then the xpath isn't required to be defined."""
 
@@ -177,8 +177,8 @@ def test_non_xml_field_not_required() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: str = XmlField(xpath="./element1/text()")
+    class MyModel(DocModel):
+        element1: str = XpathField(query="./element1/text()")
         element2: str | None = None
         element3: str = "default"
 
@@ -200,9 +200,9 @@ def test_parsing_multiple_elements_to_list() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: list[str] = XmlField(xpath="./element1/text()")
-        element2: List[float] = XmlField(xpath="./element2/text()")  # noqa: UP006
+    class MyModel(DocModel):
+        element1: list[str] = XpathField(query="./element1/text()")
+        element2: List[float] = XpathField(query="./element2/text()")  # noqa: UP006
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == ["text1", "text2"]
@@ -217,9 +217,9 @@ def test_parsing_single_element_to_list() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: list[str] = XmlField(xpath="./element1/text()")
-        element2: list[float] = XmlField(xpath="./element2/text()")
+    class MyModel(DocModel):
+        element1: list[str] = XpathField(query="./element1/text()")
+        element2: list[float] = XpathField(query="./element2/text()")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == ["text1"]
@@ -236,10 +236,10 @@ def test_optional_list() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: list[str] | None = XmlField(xpath="./element1/text()")
-        element2: Optional[List[float]] = XmlField(  # noqa: UP006, UP007
-            xpath="./element2/text()"
+    class MyModel(DocModel):
+        element1: list[str] | None = XpathField(query="./element1/text()")
+        element2: Optional[List[float]] = XpathField(  # noqa: UP006, UP007
+            query="./element2/text()"
         )
 
     model = MyModel.model_validate_xml(xml_bytes)
@@ -254,8 +254,8 @@ def test_literal() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: Literal["value1", "value2"] = XmlField(xpath="./element1/text()")
+    class MyModel(DocModel):
+        element1: Literal["value1", "value2"] = XpathField(query="./element1/text()")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -269,9 +269,9 @@ def test_list_of_literals() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        element1: list[Literal["value1", "value2"]] = XmlField(
-            xpath="./element1/text()"
+    class MyModel(DocModel):
+        element1: list[Literal["value1", "value2"]] = XpathField(
+            query="./element1/text()"
         )
 
     model = MyModel.model_validate_xml(xml_bytes)
@@ -294,13 +294,15 @@ def test_empty_results() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        no_element: str | None = XmlField(xpath="./noelement/text()", default=None)
-        element1: str | None = XmlField(xpath="./element1/text()", default=None)
-        element2: float | None = XmlField(xpath="./element1/text()", default=None)
-        element3: int | None = XmlField(xpath="./element1/text()", default=None)
-        element4: list[str] = XmlField(xpath="./element1/text()", default_factory=list)
-        element5: list[str] | None = XmlField(xpath="./element1/text()", default=None)
+    class MyModel(DocModel):
+        no_element: str | None = XpathField(query="./noelement/text()", default=None)
+        element1: str | None = XpathField(query="./element1/text()", default=None)
+        element2: float | None = XpathField(query="./element1/text()", default=None)
+        element3: int | None = XpathField(query="./element1/text()", default=None)
+        element4: list[str] = XpathField(
+            query="./element1/text()", default_factory=list
+        )
+        element5: list[str] | None = XpathField(query="./element1/text()", default=None)
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.no_element is None
@@ -317,11 +319,11 @@ def test_empty_results_with_defaults() -> None:
     </root>
     """
 
-    class MyModel(XmlBaseModel):
-        str_field: str = XmlField(xpath="/el/text()", default="default")
-        opt_str_field: str | None = XmlField(xpath="/el/text()", default="default")
-        list_field: list[str] = XmlField(
-            xpath="/el/text()", default_factory=lambda: ["default"]
+    class MyModel(DocModel):
+        str_field: str = XpathField(query="/el/text()", default="default")
+        opt_str_field: str | None = XpathField(query="/el/text()", default="default")
+        list_field: list[str] = XpathField(
+            query="/el/text()", default_factory=lambda: ["default"]
         )
 
     model = MyModel.model_validate_xml(xml_bytes)
@@ -342,7 +344,7 @@ def test_passing_in_lxml_element() -> None:
 
     root = etree.fromstring(xml_bytes)
 
-    class MyModel(XmlBaseModel):
+    class MyModel(DocModel):
         element1: str
         element2: float
 
@@ -364,9 +366,9 @@ def test_parsing_html() -> None:
     </html>
     """
 
-    class MyModel(XmlBaseModel):
-        title: str = XmlField(xpath="/html/head/title/text()")
-        paragraphs: list[str] = XmlField(xpath="/html/body/p/text()")
+    class MyModel(DocModel):
+        title: str = XpathField(query="/html/head/title/text()")
+        paragraphs: list[str] = XpathField(query="/html/body/p/text()")
 
     model = MyModel.model_validate_html(html)
     assert model.title == "Title"
@@ -386,8 +388,8 @@ def test_string_xpath_function() -> None:
     </html>
     """
 
-    class MyModel(XmlBaseModel):
-        title: str = XmlField(xpath="string(/html/head/title)")
+    class MyModel(DocModel):
+        title: str = XpathField(query="string(/html/head/title)")
 
     model = MyModel.model_validate_html(html)
     assert model.title == "Title"

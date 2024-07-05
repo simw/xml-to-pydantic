@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from xml_to_pydantic import ConfigDict, XmlBaseModel, XmlParsingError
+from xml_to_pydantic import ConfigDict, DocModel, DocParsingError
 
 
 def test_inferring_xpath() -> None:
@@ -21,11 +21,11 @@ def test_inferring_xpath() -> None:
     </root>
     """
 
-    class Element2Model(XmlBaseModel):
+    class Element2Model(DocModel):
         element2a: str
         element2b: str
 
-    class RootModel(XmlBaseModel):
+    class RootModel(DocModel):
         element1: str
         element2: Element2Model
 
@@ -33,13 +33,13 @@ def test_inferring_xpath() -> None:
         "element1": "./element1/text()",
         "element2": "./element2",
     }
-    assert RootModel.xml_fields() == root_xpaths
+    assert RootModel.xpath_fields() == root_xpaths
 
     el2_xpaths = {
         "element2a": "./element2a/text()",
         "element2b": "./element2b/text()",
     }
-    assert Element2Model.xml_fields() == el2_xpaths
+    assert Element2Model.xpath_fields() == el2_xpaths
 
     model = RootModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -63,10 +63,10 @@ def test_inferring_xpath_with_list() -> None:
     </root>
     """
 
-    class Element2Model(XmlBaseModel):
+    class Element2Model(DocModel):
         element2a: list[str]
 
-    class RootModel(XmlBaseModel):
+    class RootModel(DocModel):
         element1: str
         element2: Element2Model
 
@@ -87,10 +87,10 @@ def test_inferring_xpath_with_list_of_models() -> None:
     </root>
     """
 
-    class ElementModel(XmlBaseModel):
+    class ElementModel(DocModel):
         subel: list[str]
 
-    class RootModel(XmlBaseModel):
+    class RootModel(DocModel):
         element: list[ElementModel]
 
     model = RootModel.model_validate_xml(xml_bytes)
@@ -114,7 +114,7 @@ def test_inferring_xpath_with_alias() -> None:
     def xpath_generator(field_name: str) -> str:
         return field_name.replace("_", "-")
 
-    class DashToUnderscore(XmlBaseModel):
+    class DashToUnderscore(DocModel):
         model_config = ConfigDict(xpath_generator=xpath_generator)
 
     class Element2Model(DashToUnderscore):
@@ -144,12 +144,12 @@ def test_inferring_xpath_with_new_root() -> None:
     </root>
     """
 
-    class Element2Model(XmlBaseModel):
+    class Element2Model(DocModel):
         model_config = ConfigDict(xpath_root="./subel")
         element2a: str
         element2b: str
 
-    class RootModel(XmlBaseModel):
+    class RootModel(DocModel):
         model_config = ConfigDict(xpath_root="./new-root")
         element1: str
         element2: Element2Model
@@ -169,11 +169,11 @@ def test_xpath_new_root_error_no_element() -> None:
     </root>
     """
 
-    class Model(XmlBaseModel):
+    class Model(DocModel):
         model_config = ConfigDict(xpath_root="./not-new-root")
         element1: str
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         Model.model_validate_xml(xml_bytes)
 
 
@@ -189,11 +189,11 @@ def test_xpath_new_root_error_two_elements() -> None:
     </root>
     """
 
-    class Model(XmlBaseModel):
+    class Model(DocModel):
         model_config = ConfigDict(xpath_root="./new-root")
         element1: str
 
-    with pytest.raises(XmlParsingError):
+    with pytest.raises(DocParsingError):
         Model.model_validate_xml(xml_bytes)
 
 
@@ -206,11 +206,11 @@ def test_xpath_attribute_model_field() -> None:
     </root>
     """
 
-    class Element1(XmlBaseModel):
+    class Element1(DocModel):
         attr_attribute: str
         subel: str
 
-    class Model(XmlBaseModel):
+    class Model(DocModel):
         element1: Element1
 
     model = Model.model_validate_xml(xml_bytes)
@@ -227,13 +227,13 @@ def test_xpath_attribute_model_field_with_different_prefix() -> None:
     </root>
     """
 
-    class Element1(XmlBaseModel):
+    class Element1(DocModel):
         model_config = ConfigDict(attribute_prefix="at_")
 
         at_attribute: str
         subel: str
 
-    class Model(XmlBaseModel):
+    class Model(DocModel):
         element1: Element1
 
     model = Model.model_validate_xml(xml_bytes)
