@@ -3,7 +3,7 @@ from __future__ import annotations
 import pydantic
 import pytest
 
-from xml_to_pydantic import DocField, DocModel, DocModelError
+from xml_to_pydantic import DocModel, DocModelError, XpathField
 
 
 def test_nested_models() -> None:
@@ -18,12 +18,12 @@ def test_nested_models() -> None:
     """
 
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
-        element2b: str = DocField(xpath="./element2b/text()")
+        element2a: str = XpathField(query="./element2a/text()")
+        element2b: str = XpathField(query="./element2b/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: Model2 = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: Model2 = XpathField(query="./element2")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -47,7 +47,7 @@ def test_nested_models_direct_xml_value() -> None:
         element2b: str
 
         @classmethod
-        def xml_fields(cls) -> dict[str, str]:
+        def xpath_fields(cls) -> dict[str, str]:
             return {
                 "element2a": "./element2a/text()",
                 "element2b": "./element2b/text()",
@@ -58,7 +58,7 @@ def test_nested_models_direct_xml_value() -> None:
         element2: Model2
 
         @classmethod
-        def xml_fields(cls) -> dict[str, str]:
+        def xpath_fields(cls) -> dict[str, str]:
             return {
                 "element1": "./element1/text()",
                 "element2": "./element2",
@@ -84,11 +84,11 @@ def test_nested_model_but_multiple_elements() -> None:
     """
 
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
+        element2a: str = XpathField(query="./element2a/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: Model2 = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: Model2 = XpathField(query="./element2")
 
     with pytest.raises(pydantic.ValidationError):
         MyModel.model_validate_xml(xml_bytes)
@@ -108,11 +108,11 @@ def test_list_of_nested_models() -> None:
     """
 
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
+        element2a: str = XpathField(query="./element2a/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: list[Model2] = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: list[Model2] = XpathField(query="./element2")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -134,11 +134,11 @@ def test_optional_list_of_nested_models() -> None:
     """
 
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
+        element2a: str = XpathField(query="./element2a/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: list[Model2] | None = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: list[Model2] | None = XpathField(query="./element2")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -158,14 +158,14 @@ def test_union_of_models_first_element() -> None:
     """
 
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
+        element2a: str = XpathField(query="./element2a/text()")
 
     class Model3(DocModel):
-        element3a: str = DocField(xpath="./element3a/text()")
+        element3a: str = XpathField(query="./element3a/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: Model2 | Model3 = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: Model2 | Model3 = XpathField(query="./element2")
 
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
@@ -233,11 +233,11 @@ def test_union_of_models_all_models_fail() -> None:
 
 def test_union_of_models_with_str() -> None:
     class Model2(DocModel):
-        element2a: str = DocField(xpath="./element2a/text()")
+        element2a: str = XpathField(query="./element2a/text()")
 
     class MyModel(DocModel):
-        element1: str = DocField(xpath="./element1/text()")
-        element2: str | Model2 = DocField(xpath="./element2")
+        element1: str = XpathField(query="./element1/text()")
+        element2: str | Model2 = XpathField(query="./element2")
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>

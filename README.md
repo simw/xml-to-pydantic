@@ -103,7 +103,7 @@ convenient, and a better approach is supplying the xpath directly (similar
 to how pydantic allows specifying an alias for a field):
 
 ```py
-from xml_to_pydantic import DocModel, DocField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -114,8 +114,8 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class MyModel(DocModel):
-    number: float = DocField(xpath="./element/text()")
-    href: str = DocField(xpath="./a/@href")
+    number: float = XpathField(query="./element/text()")
+    href: str = XpathField(query="./a/@href")
 
 
 model = MyModel.model_validate_xml(xml_bytes)
@@ -126,7 +126,7 @@ print(model)
 The parsing can also deal with nested models and lists:
 
 ```py
-from xml_to_pydantic import DocModel, DocField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -141,12 +141,12 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class NextLevel(DocModel):
-    level2: list[str] = DocField(xpath="./level2/text()")
+    level2: list[str] = XpathField(query="./level2/text()")
 
 
 class MyModel(DocModel):
-    next_level: NextLevel = DocField(xpath="./level1")
-    level_11: list[str] = DocField(xpath="./level11/text()")
+    next_level: NextLevel = XpathField(query="./level1")
+    level_11: list[str] = XpathField(query="./level11/text()")
 
 
 model = MyModel.model_validate_xml(xml_bytes)

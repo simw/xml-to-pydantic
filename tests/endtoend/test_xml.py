@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BeforeValidator
 from typing_extensions import Annotated
 
-from xml_to_pydantic import ConfigDict, DocField, DocModel
+from xml_to_pydantic import ConfigDict, DocModel, XpathField
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -27,15 +27,15 @@ def load_patents() -> list[bytes]:
 
 def test_simple_end_to_end() -> None:
     class Simple(DocModel):
-        title: str = DocField(
-            xpath="/us-patent-grant/us-bibliographic-data-grant/invention-title/text()"
+        title: str = XpathField(
+            query="/us-patent-grant/us-bibliographic-data-grant/invention-title/text()"
         )
-        assignees: list[str] | None = DocField(
-            xpath="/us-patent-grant/us-bibliographic-data-grant/assignees/assignee/addressbook/orgname/text()",
+        assignees: list[str] | None = XpathField(
+            query="/us-patent-grant/us-bibliographic-data-grant/assignees/assignee/addressbook/orgname/text()",
             default=None,
         )
-        claims: list[str] = DocField(
-            xpath="/us-patent-grant/claims/claim/claim-text/text()"
+        claims: list[str] = XpathField(
+            query="/us-patent-grant/claims/claim/claim-text/text()"
         )
 
     patents = load_patents()

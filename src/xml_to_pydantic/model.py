@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterable, List, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, Literal, Union, cast
 
 from lxml import etree
 from pydantic import BaseModel, ValidationError
@@ -9,6 +9,8 @@ from pydantic.fields import FieldInfo
 from typing_extensions import Self, get_args, get_origin
 
 from .typing import _is_optional, _is_union
+
+QueryTypes = Literal["xpath", "css"]
 
 
 class DocModelError(Exception):
@@ -32,17 +34,24 @@ DEFAULT_CONFIG = ConfigDict(
 )
 
 
-def DocField(xpath: str, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
+def DocField(  # noqa: N802
+    query_type: QueryTypes, query: str, *args: Any, **kwargs: Any
+) -> Any:
     """
     Simlar to pydantic's Field function, this is needed to be able
     to return type Any, so as not to cause complaints by type checkers
     """
-    return DocFieldInfo(xpath, *args, **kwargs)
+    return DocFieldInfo(query_type, query, *args, **kwargs)
+
+
+def XpathField(query: str, *args: Any, **kwargs: Any) -> Any:  # noqa: N802
+    return DocFieldInfo("xpath", query, *args, **kwargs)
 
 
 class DocFieldInfo(FieldInfo):
-    def __init__(self, xpath: str, *args: Any, **kwargs: Any):
-        self.xpath = xpath
+    def __init__(self, query_type: QueryTypes, query: str, *args: Any, **kwargs: Any):
+        self.query_type = query_type
+        self.query = query
         super().__init__(*args, **kwargs)
 
 
@@ -64,8 +73,8 @@ def _generate_xpath(field: str, annotation: Any, config: ConfigDict) -> str:
     xpath = xpath + field_path
 
     if not (
-        hasattr(annotation, "xml_fields")
-        or (len(field_args) > 0 and hasattr(field_args[0], "xml_fields"))
+        hasattr(annotation, "xpath_fields")
+        or (len(field_args) > 0 and hasattr(field_args[0], "xpath_fields"))
         or field.startswith(attr_prefix)
     ):
         xpath += "/text()"
@@ -95,12 +104,12 @@ def _extract_field(
     if all(isinstance(item, str) for item in items):
         result = cast(Union[List[str], List[Dict[str, Any]]], items)
 
-    elif hasattr(field_type, "xml_fields"):
+    elif hasattr(field_type, "xpath_fields"):
         items = cast(List[etree._Element], items)
         result = [_extract_model(item, field_type) for item in items]
 
     elif _is_union(field_type) and all(
-        hasattr(arg, "xml_fields") for arg in field_args
+        hasattr(arg, "xpath_fields") for arg in field_args
     ):
         items = cast(List[etree._Element], items)
         result = []
@@ -116,7 +125,7 @@ def _extract_field(
                 pass  # pragma: no cover
 
     # Is eg list[DocModel]
-    elif result_as_list and hasattr(field_args[0], "xml_fields"):
+    elif result_as_list and hasattr(field_args[0], "xpath_fields"):
         items = cast(List[etree._Element], items)
         result = [_extract_model(item, field_args[0]) for item in items]
 
@@ -142,7 +151,7 @@ def _extract_model(root: etree._Element, cls: type[DocModel]) -> dict[str, Any]:
 
     extracted_data = {}
     try:
-        for field_name, xpath in cls.xml_fields().items():
+        for field_name, xpath in cls.xpath_fields().items():
             annotation = cls.model_fields[field_name].annotation
             elements = root.xpath(xpath, smart_strings=False)
             if len(elements) == 0:
@@ -159,13 +168,13 @@ def _extract_model(root: etree._Element, cls: type[DocModel]) -> dict[str, Any]:
 
 class DocModel(BaseModel):
     @classmethod
-    def xml_fields(cls) -> dict[str, str]:
+    def xpath_fields(cls) -> dict[str, str]:
         fields = {}
         config = ConfigDict(**{**DEFAULT_CONFIG, **cls.model_config})
 
         for field, info in cls.model_fields.items():
-            if isinstance(info, DocFieldInfo) and info.xpath is not None:
-                xpath = info.xpath
+            if isinstance(info, DocFieldInfo) and info.query is not None:
+                xpath = info.query
             else:
                 xpath = _generate_xpath(field, info.annotation, config)
 

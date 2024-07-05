@@ -52,7 +52,7 @@ Alternatively, explicit XPath can be declared
 for each field, here applied to an XML document.
 
 ```py
-from xml_to_pydantic import DocModel, DocField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -63,8 +63,8 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class MyModel(DocModel):
-    number: float = DocField(xpath="./element/text()")
-    href: str = DocField(xpath="./a/@href")
+    number: float = XpathField(query="./element/text()")
+    href: str = XpathField(query="./a/@href")
 
 
 model = MyModel.model_validate_xml(xml_bytes)
@@ -87,7 +87,7 @@ and properties (as described in the [Pydantic docs](https://docs.pydantic.dev/la
 ## Nested Models
 
 ```py
-from xml_to_pydantic import DocModel, DocField
+from xml_to_pydantic import DocModel, XpathField
 
 xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -101,11 +101,11 @@ xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 class Element2(DocModel):
-    href: list[str] = DocField(xpath="./a/@href")
+    href: list[str] = XpathField(query="./a/@href")
 
 
 class MyModel(DocModel):
-    number: float = DocField(xpath="./element1/text()")
+    number: float = XpathField(query="./element1/text()")
     element2: Element2
 
 
