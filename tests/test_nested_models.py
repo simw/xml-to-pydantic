@@ -31,45 +31,6 @@ def test_nested_models() -> None:
     assert model.element2.element2b == "text2"
 
 
-def test_nested_models_direct_xml_value() -> None:
-    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
-    <root>
-        <element1>value1</element1>
-        <element2>
-            <element2a>text1</element2a>
-            <element2b>text2</element2b>
-        </element2>
-    </root>
-    """
-
-    class Model2(DocModel):
-        element2a: str
-        element2b: str
-
-        @classmethod
-        def xpath_fields(cls) -> dict[str, str]:
-            return {
-                "element2a": "./element2a/text()",
-                "element2b": "./element2b/text()",
-            }
-
-    class MyModel(DocModel):
-        element1: str
-        element2: Model2
-
-        @classmethod
-        def xpath_fields(cls) -> dict[str, str]:
-            return {
-                "element1": "./element1/text()",
-                "element2": "./element2",
-            }
-
-    model = MyModel.model_validate_xml(xml_bytes)
-    assert model.element1 == "value1"
-    assert model.element2.element2a == "text1"
-    assert model.element2.element2b == "text2"
-
-
 def test_nested_model_but_multiple_elements() -> None:
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>

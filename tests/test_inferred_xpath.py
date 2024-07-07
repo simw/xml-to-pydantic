@@ -29,18 +29,6 @@ def test_inferring_xpath() -> None:
         element1: str
         element2: Element2Model
 
-    root_xpaths = {
-        "element1": "./element1/text()",
-        "element2": "./element2",
-    }
-    assert RootModel.xpath_fields() == root_xpaths
-
-    el2_xpaths = {
-        "element2a": "./element2a/text()",
-        "element2b": "./element2b/text()",
-    }
-    assert Element2Model.xpath_fields() == el2_xpaths
-
     model = RootModel.model_validate_xml(xml_bytes)
     assert model.element1 == "value1"
     assert model.element2.element2a == "text1"

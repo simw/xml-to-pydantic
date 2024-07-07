@@ -4,9 +4,10 @@ from typing import List, Literal, Optional
 
 import pydantic
 import pytest
+from lxml import etree
 from typing_extensions import Annotated
 
-from xml_to_pydantic import DocField, DocModel, DocParsingError, XpathField
+from xml_to_pydantic import ConfigDict, DocField, DocModel, DocParsingError, XpathField
 
 
 def test_xml_parses_single_level_model() -> None:
@@ -14,7 +15,7 @@ def test_xml_parses_single_level_model() -> None:
 
     This test defines the xpath in the model definition
     directly, in contrast to the next test where the xpath
-    is written in the xpath_fields function."""
+    is written in the query_fields function."""
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
     <root>
@@ -66,48 +67,6 @@ def test_xml_docfield_as_annotated() -> None:
     model = MyModel.model_validate_xml(xml_bytes)
     assert model.element1 == "text1"
     assert model.element2 == 4.53  # noqa: PLR2004
-
-
-def test_xml_parses_direct_xpath_fields() -> None:
-    """Testing single level model, but with xpath
-    defined in the xpath_fields function, instead of on
-    the model using DocField.
-
-    While more verbose, this might be prefered for separation
-    of concerns or code readability for complex models."""
-    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
-    <root>
-        <element1>text1</element1>
-        <element2>4.53</element2>
-        <element3>56</element3>
-        <element4 value="value4"/>
-        <element5 value="value5">text5</element5>
-    </root>
-    """
-
-    class MyModel(DocModel):
-        element1: str
-        element2: float
-        element3: int
-        element4_value: str
-        element5_value: str
-        element5: str
-
-        @classmethod
-        def xpath_fields(cls) -> dict[str, str]:
-            return {
-                "element1": "./element1/text()",
-                "element2": "./element2/text()",
-                "element3": "./element3/text()",
-                "element4_value": "./element4/@value",
-                "element5_value": "./element5/@value",
-                "element5": "./element5/text()",
-            }
-
-    model = MyModel.model_validate_xml(xml_bytes)
-    assert model.element1 == "text1"
-    assert model.element2 == 4.53  # noqa: PLR2004
-    assert model.element3 == 56  # noqa: PLR2004
 
 
 def test_field_without_annotation() -> None:
@@ -332,7 +291,7 @@ def test_empty_results_with_defaults() -> None:
     assert model.list_field == ["default"]
 
 
-def test_passing_in_lxml_element() -> None:
+def test_passing_in_lxml_element_to_xml() -> None:
     from lxml import etree
 
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -375,7 +334,30 @@ def test_parsing_html() -> None:
     assert model.paragraphs == ["Paragraph 1", "Paragraph 2"]
 
 
-def test_string_xpath_function() -> None:
+def test_passing_in_html_element() -> None:
+    html = b"""<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(DocModel):
+        title: str = XpathField(query="/html/head/title/text()")
+        paragraphs: list[str] = XpathField(query="/html/body/p/text()")
+
+    root = etree.fromstring(html, parser=etree.HTMLParser())
+    model = MyModel.model_validate_html(root)
+    assert model.title == "Title"
+    assert model.paragraphs == ["Paragraph 1", "Paragraph 2"]
+
+
+def test_string_xpath_function_on_html() -> None:
     html = b"""<!DOCTYPE html>
     <html>
         <head>
@@ -393,3 +375,65 @@ def test_string_xpath_function() -> None:
 
     model = MyModel.model_validate_html(html)
     assert model.title == "Title"
+
+
+def test_string_xpath_function_on_xml() -> None:
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(DocModel):
+        title: str = XpathField(query="string(/html/head/title)")
+
+    model = MyModel.model_validate_xml(xml)
+    assert model.title == "Title"
+
+
+def test_xpath_root() -> None:
+    html = b"""<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(DocModel):
+        model_config = ConfigDict(xpath_root="/html")
+        title: str = XpathField(query="string(./head/title)")
+
+    model = MyModel.model_validate_html(html)
+    assert model.title == "Title"
+
+
+def test_invalid_xpath_root() -> None:
+    html = b"""<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Title</title>
+        </head>
+        <body>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+        </body>
+    </html>
+    """
+
+    class MyModel(DocModel):
+        model_config = ConfigDict(xpath_root="string(/html)")
+        title: str = XpathField(query="string(/head/title)")
+
+    with pytest.raises(DocParsingError):
+        MyModel.model_validate_html(html)
