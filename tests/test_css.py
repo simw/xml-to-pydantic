@@ -1,3 +1,5 @@
+from typing import List
+
 import pytest
 from pydantic import ValidationError
 
@@ -19,7 +21,7 @@ def test_basic_css_selector_on_html() -> None:
 
     class MyModel(DocModel):
         title: str = CssField(query="title")
-        paragraphs: list[str] = CssField(query="p")
+        paragraphs: List[str] = CssField(query="p")
 
     model = MyModel.model_validate_html(html)
     assert model.title == "Title"
@@ -55,7 +57,7 @@ def test_css_selector_nested_model() -> None:
     """
 
     class NestedModel(DocModel):
-        paragraphs: list[str] = CssField(query="p")
+        paragraphs: List[str] = CssField(query="p")
 
     class MyModel(DocModel):
         title: str = CssField(query="title")

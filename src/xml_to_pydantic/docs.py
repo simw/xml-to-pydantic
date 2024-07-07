@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Literal, Protocol, cast
+from typing import List, Literal, Protocol, Union, cast
 
 from cssselect import GenericTranslator, HTMLTranslator
 from lxml import etree
@@ -13,8 +13,9 @@ class GenericDoc(Protocol):
     ) -> QueryReturn: ...  # pragma: no cover
 
 
-XPathReturn = str | List[str] | List[etree._Element]
-QueryReturn = List[str] | List[GenericDoc]
+# TODO: Add support for more types of queries - xpath can return bool, float
+XPathReturn = Union[str, List[str], List[etree._Element]]
+QueryReturn = Union[List[str], List[GenericDoc]]
 
 
 @dataclass
